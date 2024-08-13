@@ -3,14 +3,13 @@ import ApolloAPI
 #endif
 
 /// An accumulator that converts executed data to the correct values for use in a selection set.
-@_spi(Execution)
-public class DataDictMapper: GraphQLResultAccumulator {
+class DataDictMapper: GraphQLResultAccumulator {
 
-  public let requiresCacheKeyComputation: Bool = false
+  let requiresCacheKeyComputation: Bool = false
 
   let handleMissingValues: HandleMissingValues
 
-  public enum HandleMissingValues {
+  enum HandleMissingValues {
     case disallow
     case allowForOptionalFields
     /// Using this option will result in an unsafe `SelectionSet` that will crash
@@ -22,7 +21,7 @@ public class DataDictMapper: GraphQLResultAccumulator {
     self.handleMissingValues = handleMissingValues
   }
 
-  public func accept(scalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
+  func accept(scalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
     switch info.field.type.namedType {
     case let .scalar(decodable as any JSONDecodable.Type):
       // This will convert a JSON value to the expected value type.
@@ -32,7 +31,7 @@ public class DataDictMapper: GraphQLResultAccumulator {
     }
   }
 
-  public func accept(customScalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
+  func accept(customScalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
     switch info.field.type.namedType {
     case let .customScalar(decodable as any JSONDecodable.Type):
       // This will convert a JSON value to the expected value type,
@@ -43,11 +42,11 @@ public class DataDictMapper: GraphQLResultAccumulator {
     }
   }
 
-  public func acceptNullValue(info: FieldExecutionInfo) -> AnyHashable? {
+  func acceptNullValue(info: FieldExecutionInfo) -> AnyHashable? {
     return DataDict._NullValue
   }
 
-  public func acceptMissingValue(info: FieldExecutionInfo) throws -> AnyHashable? {
+  func acceptMissingValue(info: FieldExecutionInfo) throws -> AnyHashable? {
     switch handleMissingValues {
     case .allowForOptionalFields where info.field.type.isNullable: fallthrough
     case .allowForAllFields:
@@ -58,23 +57,23 @@ public class DataDictMapper: GraphQLResultAccumulator {
     }
   }
 
-  public func accept(list: [AnyHashable?], info: FieldExecutionInfo) -> AnyHashable? {
+  func accept(list: [AnyHashable?], info: FieldExecutionInfo) -> AnyHashable? {
     return list
   }
 
-  public func accept(childObject: DataDict, info: FieldExecutionInfo) throws -> AnyHashable? {
+  func accept(childObject: DataDict, info: FieldExecutionInfo) throws -> AnyHashable? {
     return childObject
   }
 
-  public func accept(
-    fieldEntry: AnyHashable?,
+  func accept(
+    fieldEntry: AnyHashable?, 
     info: FieldExecutionInfo
   ) -> (key: String, value: AnyHashable)? {
     guard let fieldEntry = fieldEntry else { return nil }
     return (info.responseKeyForField, fieldEntry)
   }
 
-  public func accept(
+  func accept(
     fieldEntries: [(key: String, value: AnyHashable)],
     info: ObjectExecutionInfo
   ) throws -> DataDict {
@@ -85,7 +84,7 @@ public class DataDictMapper: GraphQLResultAccumulator {
     )
   }
 
-  public func finish(rootValue: DataDict, info: ObjectExecutionInfo) -> DataDict {
+  func finish(rootValue: DataDict, info: ObjectExecutionInfo) -> DataDict {
     return rootValue
   }
 }

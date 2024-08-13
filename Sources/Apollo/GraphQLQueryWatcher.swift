@@ -7,27 +7,20 @@ import ApolloAPI
 ///
 /// NOTE: The store retains the watcher while subscribed. You must call `cancel()` on your query watcher when you no longer need results. Failure to call `cancel()` before releasing your reference to the returned watcher will result in a memory leak.
 public final class GraphQLQueryWatcher<Query: GraphQLQuery>: Cancellable, ApolloStoreSubscriber {
-  weak var client: (any ApolloClientProtocol)?
+  weak var client: ApolloClientProtocol?
   public let query: Query
-
-  /// Determines if the watcher should perform a network fetch when it's watched objects have
-  /// changed, but reloading them from the cache fails. Defaults to `true`.
-  ///
-  /// If set to `false`, the watcher will not receive updates if the cache load fails.
-  public let refetchOnFailedUpdates: Bool
-
   let resultHandler: GraphQLResultHandler<Query.Data>
 
   private let callbackQueue: DispatchQueue
 
   private let contextIdentifier = UUID()
-  private let context: (any RequestContext)?
+  private let context: RequestContext?
 
   private class WeakFetchTaskContainer {
-    weak var cancellable: (any Cancellable)?
+    weak var cancellable: Cancellable?
     var cachePolicy: CachePolicy?
 
-    fileprivate init(_ cancellable: (any Cancellable)?, _ cachePolicy: CachePolicy?) {
+    fileprivate init(_ cancellable: Cancellable?, _ cachePolicy: CachePolicy?) {
       self.cancellable = cancellable
       self.cachePolicy = cachePolicy
     }
@@ -42,20 +35,16 @@ public final class GraphQLQueryWatcher<Query: GraphQLQuery>: Cancellable, Apollo
   /// - Parameters:
   ///   - client: The client protocol to pass in.
   ///   - query: The query to watch.
-  ///   - refetchOnFailedUpdates: Should the watcher perform a network fetch when it's watched
-  ///     objects have changed, but reloading them from the cache fails. Defaults to `true`.
   ///   - context: [optional] A context that is being passed through the request chain. Defaults to `nil`.
   ///   - callbackQueue: The queue for the result handler. Defaults to the main queue.
   ///   - resultHandler: The result handler to call with changes.
-  public init(client: any ApolloClientProtocol,
+  public init(client: ApolloClientProtocol,
               query: Query,
-              refetchOnFailedUpdates: Bool = true,
-              context: (any RequestContext)? = nil,
+              context: RequestContext? = nil,
               callbackQueue: DispatchQueue = .main,
               resultHandler: @escaping GraphQLResultHandler<Query.Data>) {
     self.client = client
     self.query = query
-    self.refetchOnFailedUpdates = refetchOnFailedUpdates
     self.resultHandler = resultHandler
     self.callbackQueue = callbackQueue
     self.context = context
@@ -131,7 +120,7 @@ public final class GraphQLQueryWatcher<Query: GraphQLQuery>: Cancellable, Apollo
             self.resultHandler(result)
           }
         case .failure:
-          if self.refetchOnFailedUpdates && self.fetching.cachePolicy != .returnCacheDataDontFetch {
+          if self.fetching.cachePolicy != .returnCacheDataDontFetch {
             // If the cache fetch is not successful, for instance if the data is missing, refresh from the server.
             self.fetch(cachePolicy: .fetchIgnoringCacheData)
           }

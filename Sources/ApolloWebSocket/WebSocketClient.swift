@@ -12,7 +12,7 @@ public protocol WebSocketClient: AnyObject {
   ///
   /// - Note: The `WebSocketTransport` will set itself as the delgate for the client. Consumers
   /// should set themselves as the delegate for the `WebSocketTransport` to observe events.  
-  var delegate: (any WebSocketClientDelegate)? { get set }
+  var delegate: WebSocketClientDelegate? { get set }
 
   /// `DispatchQueue` where the websocket client should call all delegate callbacks.
   var callbackQueue: DispatchQueue { get set }
@@ -38,23 +38,23 @@ public protocol WebSocketClientDelegate: AnyObject {
 
   /// The websocket client has started a connection to the server.
   /// - Parameter socket: The `WebSocketClient` that sent the delegate event.
-  func websocketDidConnect(socket: any WebSocketClient)
+  func websocketDidConnect(socket: WebSocketClient)
 
   /// The websocket client has disconnected from the server.
   /// - Parameters:
   ///   - socket: The `WebSocketClient` that sent the delegate event.
   ///   - error: An optional error if an error occured.
-  func websocketDidDisconnect(socket: any WebSocketClient, error: (any Error)?)
+  func websocketDidDisconnect(socket: WebSocketClient, error: Error?)
 
   /// The websocket client received message text from the server
   /// - Parameters:
   ///   - socket: The `WebSocketClient` that sent the delegate event.
   ///   - text: The text received from the server.
-  func websocketDidReceiveMessage(socket: any WebSocketClient, text: String)
+  func websocketDidReceiveMessage(socket: WebSocketClient, text: String)
 
   /// The websocket client received data from the server
   /// - Parameters:
   ///   - socket: The `WebSocketClient` that sent the delegate event.
   ///   - data: The data received from the server.
-  func websocketDidReceiveData(socket: any WebSocketClient, data: Data)
+  func websocketDidReceiveData(socket: WebSocketClient, data: Data)
 }

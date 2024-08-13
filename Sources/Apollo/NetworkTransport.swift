@@ -21,9 +21,9 @@ public protocol NetworkTransport: AnyObject {
   func send<Operation: GraphQLOperation>(operation: Operation,
                                          cachePolicy: CachePolicy,
                                          contextIdentifier: UUID?,
-                                         context: (any RequestContext)?,
+                                         context: RequestContext?,
                                          callbackQueue: DispatchQueue,
-                                         completionHandler: @escaping (Result<GraphQLResult<Operation.Data>, any Error>) -> Void) -> any Cancellable
+                                         completionHandler: @escaping (Result<GraphQLResult<Operation.Data>, Error>) -> Void) -> Cancellable
 
   /// The name of the client to send as a header value.
   var clientName: String { get }
@@ -108,7 +108,7 @@ public protocol UploadingNetworkTransport: NetworkTransport {
   func upload<Operation: GraphQLOperation>(
     operation: Operation,
     files: [GraphQLFile],
-    context: (any RequestContext)?,
+    context: RequestContext?,
     callbackQueue: DispatchQueue,
-    completionHandler: @escaping (Result<GraphQLResult<Operation.Data>,any Error>) -> Void) -> any Cancellable
+    completionHandler: @escaping (Result<GraphQLResult<Operation.Data>,Error>) -> Void) -> Cancellable
 }

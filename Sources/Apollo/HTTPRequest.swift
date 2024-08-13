@@ -22,7 +22,7 @@ open class HTTPRequest<Operation: GraphQLOperation>: Hashable {
   public let contextIdentifier: UUID?
 
   /// [optional] A context that is being passed through the request chain.
-  public let context: (any RequestContext)?
+  public let context: RequestContext?
   
   /// Designated Initializer
   ///
@@ -44,7 +44,7 @@ open class HTTPRequest<Operation: GraphQLOperation>: Hashable {
               clientVersion: String,
               additionalHeaders: [String: String],
               cachePolicy: CachePolicy = .default,
-              context: (any RequestContext)? = nil) {
+              context: RequestContext? = nil) {
     self.graphQLEndpoint = graphQLEndpoint
     self.operation = operation
     self.contextIdentifier = contextIdentifier

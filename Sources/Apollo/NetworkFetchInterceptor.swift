@@ -18,10 +18,10 @@ public class NetworkFetchInterceptor: ApolloInterceptor, Cancellable {
   }
   
   public func interceptAsync<Operation: GraphQLOperation>(
-    chain: any RequestChain,
+    chain: RequestChain,
     request: HTTPRequest<Operation>,
     response: HTTPResponse<Operation>?,
-    completion: @escaping (Result<GraphQLResult<Operation.Data>, any Error>) -> Void) {
+    completion: @escaping (Result<GraphQLResult<Operation.Data>, Error>) -> Void) {
     
     let urlRequest: URLRequest
     do {
@@ -36,8 +36,7 @@ public class NetworkFetchInterceptor: ApolloInterceptor, Cancellable {
       return
     }
     
-    let taskDescription = "\(Operation.operationType) \(Operation.operationName)"
-    let task = self.client.sendRequest(urlRequest, taskDescription: taskDescription) { [weak self] result in
+    let task = self.client.sendRequest(urlRequest) { [weak self] result in
       guard let self = self else {
         return
       }

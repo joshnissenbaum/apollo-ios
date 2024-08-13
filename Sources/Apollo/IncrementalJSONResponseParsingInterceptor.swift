@@ -44,16 +44,15 @@ public struct IncrementalJSONResponseParsingInterceptor: ApolloInterceptor {
 
   private class ResultStorage {
     var currentResult: Any?
-    var currentCacheRecords: RecordSet?
   }
 
   public init() { }
 
   public func interceptAsync<Operation: GraphQLOperation>(
-    chain: any RequestChain,
+    chain: RequestChain,
     request: HTTPRequest<Operation>,
     response: HTTPResponse<Operation>?,
-    completion: @escaping (Result<GraphQLResult<Operation.Data>, any Error>) -> Void
+    completion: @escaping (Result<GraphQLResult<Operation.Data>, Error>) -> Void
   ) {
     guard let createdResponse = response else {
       chain.handleErrorAsync(
@@ -73,7 +72,6 @@ public struct IncrementalJSONResponseParsingInterceptor: ApolloInterceptor {
       }
 
       let parsedResult: GraphQLResult<Operation.Data>
-      let parsedCacheRecords: RecordSet?
 
       if let currentResult = resultStorage.currentResult {
         guard var currentResult = currentResult as? GraphQLResult<Operation.Data> else {
@@ -84,43 +82,31 @@ public struct IncrementalJSONResponseParsingInterceptor: ApolloInterceptor {
           throw ParsingError.couldNotParseIncrementalJSON(json: body)
         }
 
-        var currentCacheRecords = resultStorage.currentCacheRecords ?? RecordSet()
-
         for item in incrementalItems {
           let incrementalResponse = try IncrementalGraphQLResponse<Operation>(
             operation: request.operation,
             body: item
           )
-          let (incrementalResult, incrementalCacheRecords) = try incrementalResponse.parseIncrementalResult(
-            withCachePolicy: request.cachePolicy
-          )
+          let incrementalResult = try incrementalResponse.parseIncrementalResult()
           currentResult = try currentResult.merging(incrementalResult)
-
-          if let incrementalCacheRecords {
-            currentCacheRecords.merge(records: incrementalCacheRecords)
-          }
         }
 
-        createdResponse._legacyResponse = nil
-
         parsedResult = currentResult
-        parsedCacheRecords = currentCacheRecords
 
       } else {
-        let graphQLResponse = GraphQLResponse(operation: request.operation, body: body)
-        createdResponse._legacyResponse = graphQLResponse
+        let graphQLResponse = GraphQLResponse(
+          operation: request.operation,
+          body: body
+        )
+        createdResponse.legacyResponse = graphQLResponse
 
-        let (result, cacheRecords) = try graphQLResponse.parseResult(withCachePolicy: request.cachePolicy)
+        let result = try parseResult(from: graphQLResponse, cachePolicy: request.cachePolicy)
 
         parsedResult = result
-        parsedCacheRecords = cacheRecords
       }
 
       createdResponse.parsedResponse = parsedResult
-      createdResponse.cacheRecords = parsedCacheRecords
-
       resultStorage.currentResult = parsedResult
-      resultStorage.currentCacheRecords = parsedCacheRecords
 
       chain.proceedAsync(
         request: request,
@@ -136,6 +122,20 @@ public struct IncrementalJSONResponseParsingInterceptor: ApolloInterceptor {
         response: createdResponse,
         completion: completion
       )
+    }
+  }  
+
+  private func parseResult<Data>(
+    from response: GraphQLResponse<Data>,
+    cachePolicy: CachePolicy
+  ) throws -> GraphQLResult<Data> {
+    switch cachePolicy {
+    case .fetchIgnoringCacheCompletely:
+      // There is no cache, so we don't need to get any info on dependencies. Use fast parsing.
+      return try response.parseResultFast()
+    default:
+      let (parsedResult, _) = try response.parseResult()
+      return parsedResult
     }
   }
 

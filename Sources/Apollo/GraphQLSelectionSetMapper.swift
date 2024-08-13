@@ -3,36 +3,35 @@ import ApolloAPI
 #endif
 
 /// An accumulator that maps executed data to create a `SelectionSet`.
-@_spi(Execution)
-public final class GraphQLSelectionSetMapper<T: SelectionSet>: GraphQLResultAccumulator {
+final class GraphQLSelectionSetMapper<T: SelectionSet>: GraphQLResultAccumulator {
 
   let dataDictMapper: DataDictMapper
 
-  public var requiresCacheKeyComputation: Bool {
+  var requiresCacheKeyComputation: Bool {
     dataDictMapper.requiresCacheKeyComputation
   }
 
-  public var handleMissingValues: DataDictMapper.HandleMissingValues {
+  var handleMissingValues: DataDictMapper.HandleMissingValues {
     dataDictMapper.handleMissingValues
   }
 
-  public init(handleMissingValues: DataDictMapper.HandleMissingValues = .disallow) {
+  init(handleMissingValues: DataDictMapper.HandleMissingValues = .disallow) {
     self.dataDictMapper = DataDictMapper(handleMissingValues: handleMissingValues)
   }
 
-  public func accept(scalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
+  func accept(scalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
     try dataDictMapper.accept(scalar: scalar, info: info)
   }
 
-  public func accept(customScalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
+  func accept(customScalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
     try dataDictMapper.accept(customScalar: customScalar, info: info)
   }
 
-  public func acceptNullValue(info: FieldExecutionInfo) -> AnyHashable? {
+  func acceptNullValue(info: FieldExecutionInfo) -> AnyHashable? {
     return DataDict._NullValue
   }
 
-  public func acceptMissingValue(info: FieldExecutionInfo) throws -> AnyHashable? {
+  func acceptMissingValue(info: FieldExecutionInfo) throws -> AnyHashable? {
     switch handleMissingValues {
     case .allowForOptionalFields where info.field.type.isNullable: fallthrough
     case .allowForAllFields:
@@ -43,20 +42,20 @@ public final class GraphQLSelectionSetMapper<T: SelectionSet>: GraphQLResultAccu
     }
   }
 
-  public func accept(list: [AnyHashable?], info: FieldExecutionInfo) -> AnyHashable? {
+  func accept(list: [AnyHashable?], info: FieldExecutionInfo) -> AnyHashable? {
     return list
   }
 
-  public func accept(childObject: DataDict, info: FieldExecutionInfo) throws -> AnyHashable? {
+  func accept(childObject: DataDict, info: FieldExecutionInfo) throws -> AnyHashable? {
     return childObject
   }
 
-  public func accept(fieldEntry: AnyHashable?, info: FieldExecutionInfo) -> (key: String, value: AnyHashable)? {
+  func accept(fieldEntry: AnyHashable?, info: FieldExecutionInfo) -> (key: String, value: AnyHashable)? {
     guard let fieldEntry = fieldEntry else { return nil }
     return (info.responseKeyForField, fieldEntry)
   }
 
-  public func accept(
+  func accept(
     fieldEntries: [(key: String, value: AnyHashable)],
     info: ObjectExecutionInfo
   ) throws -> DataDict {
@@ -67,7 +66,7 @@ public final class GraphQLSelectionSetMapper<T: SelectionSet>: GraphQLResultAccu
     )
   }
 
-  public func finish(rootValue: DataDict, info: ObjectExecutionInfo) -> T {
+  func finish(rootValue: DataDict, info: ObjectExecutionInfo) -> T {
     return T.init(_dataDict: rootValue)
   }
 }

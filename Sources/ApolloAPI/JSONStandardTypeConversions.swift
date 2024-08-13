@@ -147,8 +147,14 @@ extension JSONObject: JSONDecodable {
   }
 }
 
-extension Array: JSONEncodable where Element: JSONEncodable {
+extension Array: JSONEncodable {
   @inlinable public var _jsonValue: JSONValue {
-    map(\._jsonValue)
+    return map { element -> JSONValue in
+      if case let element as JSONEncodable = element {
+        return element._jsonValue
+      } else {
+        fatalError("Array is only JSONEncodable if Element is")
+      }
+    }
   }
 }

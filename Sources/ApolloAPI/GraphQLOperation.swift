@@ -68,7 +68,7 @@ public struct DeferredFragmentIdentifier: Hashable {
 // MARK: - GraphQLOperation
 
 public protocol GraphQLOperation: AnyObject, Hashable {
-  typealias Variables = [String: any GraphQLOperationVariableValue]
+  typealias Variables = [String: GraphQLOperationVariableValue]
 
   static var operationName: String { get }
   static var operationType: GraphQLOperationType { get }
@@ -153,10 +153,10 @@ public protocol GraphQLOperationVariableValue {
 }
 
 extension Array: GraphQLOperationVariableValue
-where Element: GraphQLOperationVariableValue & JSONEncodable & Hashable {}
+where Element: GraphQLOperationVariableValue & Hashable {}
 
 extension Dictionary: GraphQLOperationVariableValue
-where Key == String, Value == any GraphQLOperationVariableValue {
+where Key == String, Value == GraphQLOperationVariableValue {
   @inlinable public var _jsonEncodableValue: (any JSONEncodable)? { _jsonEncodableObject }
   @inlinable public var _jsonEncodableObject: JSONEncodableDictionary {
     compactMapValues { $0._jsonEncodableValue }

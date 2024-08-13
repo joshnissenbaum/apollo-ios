@@ -22,9 +22,9 @@ extension InputObject {
 /// A structure that wraps the underlying data dictionary used by `InputObject`s.
 public struct InputDict: GraphQLOperationVariableValue, Hashable {
 
-  private var data: [String: any GraphQLOperationVariableValue]
+  private var data: [String: GraphQLOperationVariableValue]
 
-  public init(_ data: [String: any GraphQLOperationVariableValue] = [:]) {
+  public init(_ data: [String: GraphQLOperationVariableValue] = [:]) {
     self.data = data
   }
 

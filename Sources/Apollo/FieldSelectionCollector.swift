@@ -3,12 +3,10 @@ import Foundation
 import ApolloAPI
 #endif
 
-@_spi(Execution)
-public struct FieldSelectionGrouping {
-  fileprivate(set) var fieldInfoList: [String: FieldExecutionInfo] = [:]
+struct FieldSelectionGrouping: Sequence {
+  private var fieldInfoList: [String: FieldExecutionInfo] = [:]
   fileprivate(set) var fulfilledFragments: Set<ObjectIdentifier> = []
   fileprivate(set) var deferredFragments: Set<ObjectIdentifier> = []
-  fileprivate(set) var cachedFragmentIdentifierTypes: [ObjectIdentifier: any SelectionSet.Type] = [:]
 
   init(info: ObjectExecutionInfo) {
     self.fulfilledFragments = info.fulfilledFragments
@@ -33,9 +31,7 @@ public struct FieldSelectionGrouping {
       "Cannot fulfill \(type.self) fragment, it's already deferred!"
     )
 
-    let identifier = ObjectIdentifier(type)
-    fulfilledFragments.insert(identifier)
-    cachedFragmentIdentifierTypes[identifier] = type
+    fulfilledFragments.insert(ObjectIdentifier(type))
   }
 
   mutating func addDeferredFragment<T: SelectionSet>(_ type: T.Type) {
@@ -44,11 +40,12 @@ public struct FieldSelectionGrouping {
       "Cannot defer \(type.self) fragment, it's already fulfilled!"
     )
 
-    let identifier = ObjectIdentifier(type)
-    deferredFragments.insert(identifier)
-    cachedFragmentIdentifierTypes[identifier] = type
+    deferredFragments.insert(ObjectIdentifier(type))
   }
-  
+
+  func makeIterator() -> Dictionary<String, FieldExecutionInfo>.Iterator {
+    fieldInfoList.makeIterator()
+  }
 }
 
 /// A protocol for a type that defines how to collect and group the selections for an object
@@ -57,8 +54,7 @@ public struct FieldSelectionGrouping {
 /// A `FieldSelectionController` is responsible for determining which selections should be executed
 /// and which fragments are being fulfilled during execution. It does this by adding them to the
 /// provided `FieldSelectionGrouping`.
-@_spi(Execution)
-public protocol FieldSelectionCollector<ObjectData> {
+protocol FieldSelectionCollector<ObjectData> {
 
   associatedtype ObjectData
 
@@ -77,9 +73,8 @@ public protocol FieldSelectionCollector<ObjectData> {
 
 }
 
-@_spi(Execution)
-public struct DefaultFieldSelectionCollector: FieldSelectionCollector {
-  static public  func collectFields(
+struct DefaultFieldSelectionCollector: FieldSelectionCollector {
+  static func collectFields(
     from selections: [Selection],
     into groupedFields: inout FieldSelectionGrouping,
     for object: JSONObject,
@@ -98,30 +93,15 @@ public struct DefaultFieldSelectionCollector: FieldSelectionCollector {
                             info: info)
         }
 
-      case let .deferred(condition, typeCase, _):
+      case let .deferred(_, typeCase, _):
         // In Apollo's implementation (Router + Server) of deferSpec=20220824 ALL defer directives
         // will be honoured and sent as separate incremental responses. This means deferred
-        // selection fields only need to be collected when they are parsed with the incremental
-        // data, at which time they are no longer deferred. The deferred fragment identifiers still
-        // need to be collected becuase that is how the user determines the state of the deferred
-        // fragment via the @Deferred property wrapper.
+        // selection fields never need to be collected because they are parsed with the incremental
+        // data, at which time they are no longer deferred.
         //
-        // If the defer condition evaluates to false though, the fragment is considered to be fulfilled
-        // and and the fields must be collected.
-        let isDeferred: Bool = {
-          if let condition, !condition.evaluate(with: info.variables) {
-            return false
-          }
-          return true
-        }()
-
-        if isDeferred {
-          groupedFields.addDeferredFragment(typeCase)
-
-        } else {
-          groupedFields.addFulfilledFragment(typeCase)
-          try collectFields(from: typeCase.__selections, into: &groupedFields, for: object, info: info)
-        }
+        // The deferred fragment identifiers still need to be collected becuase that is how the
+        // user determines the state of the deferred fragment via the @Deferred property wrapper.
+        groupedFields.addDeferredFragment(typeCase)
 
       case let .fragment(fragment):
         groupedFields.addFulfilledFragment(fragment)
@@ -191,18 +171,8 @@ struct CustomCacheDataWritingFieldSelectionCollector: FieldSelectionCollector {
                           for: object,
                           info: info,
                           asConditionalFields: true)
-
-      case let .deferred(_, deferredFragment, _):
-        if groupedFields.fulfilledFragments.contains(type: deferredFragment) {
-          try collectFields(
-            from: deferredFragment.__selections,
-            into: &groupedFields, 
-            for: object,
-            info: info,
-            asConditionalFields: false
-          )
-        }
-
+      case .deferred(_, _, _):
+        assertionFailure("Defer execution must be implemented (#3145).")
       case let .fragment(fragment):
         if groupedFields.fulfilledFragments.contains(type: fragment) {
           try collectFields(from: fragment.__selections,

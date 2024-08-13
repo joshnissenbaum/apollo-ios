@@ -116,7 +116,7 @@ extension GraphQLResult {
   /// - Returns: A `[String: Any]` JSON dictionary representing the ``GraphQLResult``.
   public func asJSONDictionary() -> [String: Any] {
     var dict: [String: Any] = [:]
-    if let data { dict["data"] = JSONConverter.convert(data) }
+    if let data { dict["data"] = convert(value: data.__data) }
     if let errors { dict["errors"] = errors.map { $0.asJSONDictionary() } }
     if let extensions { dict["extensions"] = extensions }
     return dict
@@ -126,7 +126,7 @@ extension GraphQLResult {
       var val: Any = value
       if let value = value as? DataDict {
           val = value._data
-      } else if let value = value as? (any CustomScalarType) {
+      } else if let value = value as? CustomScalarType {
           val = value._jsonValue
       }
       if let dict = val as? [String: Any] {

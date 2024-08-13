@@ -3,8 +3,7 @@ import Foundation
 import ApolloAPI
 #endif
 
-@_spi(Execution)
-public class ObjectExecutionInfo {
+class ObjectExecutionInfo {
   let rootType: any SelectionSet.Type
   let variables: GraphQLOperation.Variables?
   let schema: any SchemaMetadata.Type
@@ -16,7 +15,7 @@ public class ObjectExecutionInfo {
   fileprivate init(
     rootType: any SelectionSet.Type,
     variables: GraphQLOperation.Variables?,
-    schema: (any SchemaMetadata.Type),
+    schema: any SchemaMetadata.Type,
     responsePath: ResponsePath,
     cachePath: ResponsePath
   ) {
@@ -31,7 +30,7 @@ public class ObjectExecutionInfo {
   fileprivate init(
     rootType: any SelectionSet.Type,
     variables: GraphQLOperation.Variables?,
-    schema: (any SchemaMetadata.Type),
+    schema: any SchemaMetadata.Type,
     withRootCacheReference root: CacheReference? = nil
   ) {
     self.rootType = rootType
@@ -60,8 +59,7 @@ public class ObjectExecutionInfo {
 ///
 /// GraphQL validation makes sure all fields sharing the same response key have the same
 /// arguments and are of the same type, so we only need to resolve one field.
-@_spi(Execution)
-public class FieldExecutionInfo {
+class FieldExecutionInfo {
   let field: Selection.Field
   let parentInfo: ObjectExecutionInfo
 
@@ -159,7 +157,7 @@ public struct GraphQLExecutionError: Error, LocalizedError {
   public var pathString: String { path.description }
 
   /// The error that occurred during parsing.
-  public let underlying: any Error
+  public let underlying: Error
 
   /// A description of the error which includes the path where the error occurred.
   public var errorDescription: String? {
@@ -179,19 +177,17 @@ public struct GraphQLExecutionError: Error, LocalizedError {
 /// The methods in this class closely follow the
 /// [execution algorithm described in the GraphQL specification]
 /// (http://spec.graphql.org/draft/#sec-Execution)
-@_spi(Execution)
-public final class GraphQLExecutor<Source: GraphQLExecutionSource> {
+final class GraphQLExecutor<Source: GraphQLExecutionSource> {
 
   private let executionSource: Source
 
-  public init(executionSource: Source) {
+  init(executionSource: Source) {
     self.executionSource = executionSource
   }
 
   // MARK: - Execution
 
-  @_spi(Execution)
-  public func execute<
+  func execute<
     Accumulator: GraphQLResultAccumulator,
     SelectionSet: RootSelectionSet
   >(
@@ -239,7 +235,7 @@ public final class GraphQLExecutor<Source: GraphQLExecutionSource> {
     on data: Source.RawObjectData,
     withRootCacheReference root: CacheReference? = nil,
     variables: GraphQLOperation.Variables? = nil,
-    schema: (any SchemaMetadata.Type),
+    schema: SchemaMetadata.Type,
     accumulator: Accumulator
   ) throws -> Accumulator.FinalResult {
     let info = ObjectExecutionInfo(
@@ -249,7 +245,7 @@ public final class GraphQLExecutor<Source: GraphQLExecutionSource> {
       withRootCacheReference: root
     )
 
-    let rootValue: PossiblyDeferred<Accumulator.ObjectResult> = execute(
+    let rootValue = execute(
       selections: selectionSet.__selections,
       on: data,
       info: info,
@@ -265,76 +261,27 @@ public final class GraphQLExecutor<Source: GraphQLExecutionSource> {
     info: ObjectExecutionInfo,
     accumulator: Accumulator
   ) -> PossiblyDeferred<Accumulator.ObjectResult> {
-    let fieldEntries: [PossiblyDeferred<Accumulator.FieldEntry?>] = execute(
-      selections: selections,
-      on: object,
-      info: info,
-      accumulator: accumulator
-    )
-
-    return compactLazilyEvaluateAll(fieldEntries).map {
-      try accumulator.accept(fieldEntries: $0, info: info)
-    }
-  }
-
-  private func execute<Accumulator: GraphQLResultAccumulator>(
-    selections: [Selection],
-    on object: Source.RawObjectData,
-    info: ObjectExecutionInfo,
-    accumulator: Accumulator
-  ) -> [PossiblyDeferred<Accumulator.FieldEntry?>] {
     do {
       let groupedFields = try groupFields(selections, on: object, info: info)
       info.fulfilledFragments = groupedFields.fulfilledFragments
-      info.deferredFragments = []
+      info.deferredFragments = groupedFields.deferredFragments
 
       var fieldEntries: [PossiblyDeferred<Accumulator.FieldEntry?>] = []
       fieldEntries.reserveCapacity(groupedFields.count)
 
-      for (_, fields) in groupedFields.fieldInfoList {
-        let fieldEntry = execute(
-          fields: fields,
-          on: object,
-          accumulator: accumulator)
+      for (_, fields) in groupedFields {
+        let fieldEntry = execute(fields: fields,
+                                 on: object,
+                                 accumulator: accumulator)
         fieldEntries.append(fieldEntry)
       }
-
-      if executionSource.shouldAttemptDeferredFragmentExecution {
-        for deferredFragment in groupedFields.deferredFragments {
-          guard let fragmentType = groupedFields.cachedFragmentIdentifierTypes[deferredFragment] else {
-            info.deferredFragments.insert(deferredFragment)
-            continue
-          }
-
-          do {
-            let deferredFragmentFieldEntries = try lazilyEvaluateAll(
-              execute(
-                selections: fragmentType.__selections,
-                on: object,
-                info: info,
-                accumulator: accumulator
-              )
-            )
-            .get()
-            .compactMap { PossiblyDeferred.immediate(.success($0)) }
-
-            fieldEntries.append(contentsOf: deferredFragmentFieldEntries)
-            info.fulfilledFragments.insert(deferredFragment)
-
-          } catch {
-            info.deferredFragments.insert(deferredFragment)
-            continue
-          }
-        }
-
-      } else {
-        info.deferredFragments = groupedFields.deferredFragments
+      
+      return compactLazilyEvaluateAll(fieldEntries).map {
+        try accumulator.accept(fieldEntries: $0, info: info)
       }
 
-      return fieldEntries
-
     } catch {
-      return [.immediate(.failure(error))]
+      return .immediate(.failure(error))
     }
   }
 

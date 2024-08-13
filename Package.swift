@@ -9,8 +9,7 @@ let package = Package(
     .iOS(.v12),
     .macOS(.v10_14),
     .tvOS(.v12),
-    .watchOS(.v5),
-    .visionOS(.v1),
+    .watchOS(.v5)
   ],
   products: [
     .library(name: "Apollo", targets: ["Apollo"]),
@@ -24,7 +23,7 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/stephencelis/SQLite.swift.git",
-      .upToNextMajor(from: "0.15.1")),
+      .upToNextMajor(from: "0.13.1")),
   ],
   targets: [
     .target(
@@ -34,16 +33,14 @@ let package = Package(
       ],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloAPI",
       dependencies: [],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloSQLite",
@@ -53,8 +50,7 @@ let package = Package(
       ],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloWebSocket",
@@ -63,16 +59,14 @@ let package = Package(
       ],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloTestSupport",
       dependencies: [
         "Apollo",
         "ApolloAPI"
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .plugin(
       name: "Install CLI",

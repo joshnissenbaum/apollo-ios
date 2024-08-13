@@ -13,7 +13,7 @@ public final class SQLiteNormalizedCache {
 
   private let shouldVacuumOnClear: Bool
   
-  let database: any SQLiteDatabase
+  let database: SQLiteDatabase
 
   /// Designated initializer
   ///
@@ -22,14 +22,14 @@ public final class SQLiteNormalizedCache {
   ///   - shouldVacuumOnClear: If the database should also be `VACCUM`ed on clear to remove all traces of info. Defaults to `false` since this involves a performance hit, but this should be used if you are storing any Personally Identifiable Information in the cache.
   /// - Throws: Any errors attempting to open or create the database.
   public init(fileURL: URL,
-              databaseType: any SQLiteDatabase.Type = SQLiteDotSwiftDatabase.self,
+              databaseType: SQLiteDatabase.Type = SQLiteDotSwiftDatabase.self,
               shouldVacuumOnClear: Bool = false) throws {
     self.database = try databaseType.init(fileURL: fileURL)
     self.shouldVacuumOnClear = shouldVacuumOnClear
     try self.database.createRecordsTableIfNeeded()
   }
 
-  public init(database: any SQLiteDatabase,
+  public init(database: SQLiteDatabase,
               shouldVacuumOnClear: Bool = false) throws {
     self.database = database
     self.shouldVacuumOnClear = shouldVacuumOnClear
