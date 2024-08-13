@@ -1,3 +1,4 @@
+import Foundation
 #if !COCOAPODS
 import ApolloAPI
 #endif
@@ -37,36 +38,43 @@ public struct GraphQLResult<Data: RootSelectionSet> {
   }
 
   func merging(_ incrementalResult: IncrementalGraphQLResult) throws -> GraphQLResult<Data> {
-    let mergedDataDict = try merge(
-      incrementalResult.data?.__data,
-      into: self.data?.__data
-    ) { currentDataDict, incrementalDataDict in
-      try currentDataDict.merging(incrementalDataDict, at: incrementalResult.path)
-    }
-    var mergedData: Data? = nil
-    if let mergedDataDict {
-      mergedData = Data(_dataDict: mergedDataDict)
+    var mergedData = self.data
+    if let incrementalDataDict = incrementalResult.data?.__data {
+      if let currentDataDict = mergedData?.__data {
+        mergedData = Data(
+          _dataDict: try currentDataDict.merging(incrementalDataDict, at: incrementalResult.path)
+        )
+
+      } else {
+        mergedData = Data(_dataDict: incrementalDataDict)
+      }
     }
 
-    let mergedErrors = try merge(
-      incrementalResult.errors,
-      into: self.errors
-    ) { currentErrors, incrementalErrors in
-      currentErrors + incrementalErrors
+    var mergedErrors = self.errors
+    if let incrementalErrors = incrementalResult.errors {
+      if let currentErrors = mergedErrors {
+        mergedErrors = currentErrors + incrementalErrors
+
+      } else {
+        mergedErrors = incrementalErrors
+      }
     }
 
-    let mergedExtensions = try merge(
-      incrementalResult.extensions,
-      into: self.extensions
-    ) { currentExtensions, incrementalExtensions in
-      currentExtensions.merging(incrementalExtensions) { _, new in new }
+    var mergedExtensions = self.extensions
+    if let incrementalExtensions = incrementalResult.extensions {
+      if let currentExtensions = mergedExtensions {
+        mergedExtensions = currentExtensions.merging(incrementalExtensions) { _, new in new }
+
+      } else {
+        mergedExtensions = incrementalExtensions
+      }
     }
 
-    let mergedDependentKeys = try merge(
-      incrementalResult.dependentKeys,
-      into: self.dependentKeys
-    ) { currentDependentKeys, incrementalDependentKeys in
-      currentDependentKeys.union(incrementalDependentKeys)
+    var mergedDependentKeys = self.dependentKeys
+    if let incrementalDependentKeys = incrementalResult.dependentKeys {
+      if let currentDependentKeys = mergedDependentKeys {
+        mergedDependentKeys = currentDependentKeys.union(incrementalDependentKeys)
+      }
     }
 
     return GraphQLResult(
@@ -76,23 +84,6 @@ public struct GraphQLResult<Data: RootSelectionSet> {
       source: source,
       dependentKeys: mergedDependentKeys
     )
-  }
-
-  fileprivate func merge<T>(
-    _ newValue: T?,
-    into currentValue: T?,
-    onMerge: (_ currentValue: T, _ newValue: T) throws -> T
-  ) throws -> T? {
-    switch (currentValue, newValue) {
-    case let (currentValue, nil):
-      return currentValue
-
-    case let (.some(currentValue), .some(newValue)):
-      return try onMerge(currentValue, newValue)
-
-    case let (nil, newValue):
-      return newValue
-    }
   }
 }
 
@@ -135,5 +126,55 @@ extension GraphQLResult {
           return arr.map(convert)
       }
       return val
+  }
+}
+
+fileprivate extension DataDict {
+  enum Error: Swift.Error, LocalizedError {
+    case invalidPathDataType(String)
+    case cannotOverwriteData(AnyHashable, AnyHashable)
+
+    public var errorDescription: String? {
+      switch self {
+      case let .invalidPathDataType(got):
+        return "Invalid data type for merge - \(got)"
+
+      case let .cannotOverwriteData(current, new):
+        return "Incremental merging cannot overwrite existing data \(current) with \(new)"
+      }
+    }
+  }
+
+  func merging(_ newDataDict: DataDict, at path: [PathComponent]) throws -> DataDict {
+    guard let pathDataDict = (self[path] as? DataDict) else {
+      throw Error.invalidPathDataType(String(describing: type(of: value)))
+    }
+
+    let mergedData = try pathDataDict._data.merging(newDataDict._data) { current, new in
+      // TODO: This is a quick fix for __typename being returned with fragments, needs a rethink!
+      if current != new {
+        throw Error.cannotOverwriteData(current, new)
+      }
+
+      return current
+    }
+
+    let mergedFulfilledFragments = pathDataDict._fulfilledFragments
+      .union(newDataDict._fulfilledFragments)
+
+    let mergedDeferredFragments = pathDataDict._deferredFragments
+      .subtracting(newDataDict._fulfilledFragments)
+      .union(newDataDict._deferredFragments)
+
+    let mergedDataDict = DataDict(
+      data: mergedData,
+      fulfilledFragments: mergedFulfilledFragments,
+      deferredFragments: mergedDeferredFragments
+    )
+
+    var result = self
+    result[path] = mergedDataDict
+
+    return result
   }
 }

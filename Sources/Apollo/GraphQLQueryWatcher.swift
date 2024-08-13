@@ -85,9 +85,9 @@ public final class GraphQLQueryWatcher<Query: GraphQLQuery>: Cancellable, Apollo
     client?.store.unsubscribe(self)
   }
 
-  public func store(_ store: ApolloStore,
-                    didChangeKeys changedKeys: Set<CacheKey>,
-                    contextIdentifier: UUID?) {
+  func store(_ store: ApolloStore,
+             didChangeKeys changedKeys: Set<CacheKey>,
+             contextIdentifier: UUID?) {
     if
       let incomingIdentifier = contextIdentifier,
       incomingIdentifier == self.contextIdentifier {

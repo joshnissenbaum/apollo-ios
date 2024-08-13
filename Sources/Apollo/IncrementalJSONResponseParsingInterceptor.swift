@@ -10,7 +10,7 @@ public struct IncrementalJSONResponseParsingInterceptor: ApolloInterceptor {
   public enum ParsingError: Error, LocalizedError {
     case noResponseToParse
     case couldNotParseToJSON(data: Data)
-    case mismatchedCurrentResultType
+    case mismatchedCurrentResultType(expected: String, got: String)
     case couldNotParseIncrementalJSON(json: JSONValue)
 
     public var errorDescription: String? {
@@ -30,8 +30,8 @@ public struct IncrementalJSONResponseParsingInterceptor: ApolloInterceptor {
 
         return errorStrings.joined(separator: " ")
 
-      case .mismatchedCurrentResultType:
-        return "Partial result type operation does not match incremental result type operation."
+      case let .mismatchedCurrentResultType(expected, got):
+        return "Could not cast current result - expected \(expected), got \(got)."
 
       case let .couldNotParseIncrementalJSON(json):
         return "Could not parse incremental values - got \(json)."
@@ -75,7 +75,10 @@ public struct IncrementalJSONResponseParsingInterceptor: ApolloInterceptor {
 
       if let currentResult = resultStorage.currentResult {
         guard var currentResult = currentResult as? GraphQLResult<Operation.Data> else {
-          throw ParsingError.mismatchedCurrentResultType
+          throw ParsingError.mismatchedCurrentResultType(
+            expected: String(describing: Operation.Data.self),
+            got: String(describing: currentResult.self)
+          )
         }
 
         guard let incrementalItems = body["incremental"] as? [JSONObject] else {

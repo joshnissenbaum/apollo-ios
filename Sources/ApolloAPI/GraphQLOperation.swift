@@ -16,7 +16,7 @@ public enum GraphQLOperationType: Hashable {
 /// ``GraphQLOperation``. You can configure the the code generation engine to include the
 /// ``OperationDefinition``, ``operationIdentifier``, or both using the `OperationDocumentFormat`
 /// options in your `ApolloCodegenConfiguration`.
-public struct OperationDocument: Sendable {
+public struct OperationDocument {
   public let operationIdentifier: String?
   public let definition: OperationDefinition?
 
@@ -35,7 +35,7 @@ public struct OperationDocument: Sendable {
 /// This data represents the `Definition` for a `Document` as defined in the GraphQL Spec.
 /// In the case of the Apollo client, the definition will always be an `ExecutableDefinition`.
 /// - See: [GraphQLSpec - Document](https://spec.graphql.org/draft/#Document)
-public struct OperationDefinition: Sendable {
+public struct OperationDefinition {
   let operationDefinition: String
   let fragments: [any Fragment.Type]?
 
@@ -57,15 +57,13 @@ public struct OperationDefinition: Sendable {
 /// response label and path.
 public struct DeferredFragmentIdentifier: Hashable {
   let label: String
-  let fieldPath: [String]
+  let path: [String]
 
-  public init(label: String, fieldPath: [String]) {
+  public init(label: String, path: [String]) {
     self.label = label
-    self.fieldPath = fieldPath
+    self.path = path
   }
 }
-
-// MARK: - GraphQLOperation
 
 public protocol GraphQLOperation: AnyObject, Hashable {
   typealias Variables = [String: GraphQLOperationVariableValue]
@@ -81,23 +79,22 @@ public protocol GraphQLOperation: AnyObject, Hashable {
   associatedtype Data: RootSelectionSet
 }
 
-// MARK: Static Extensions
-
 public extension GraphQLOperation {
+  var __variables: Variables? {
+    return nil
+  }
+
   static var deferredFragments: [DeferredFragmentIdentifier: any SelectionSet.Type]? {
     return nil
   }
 
-  static func deferredSelectionSetType<T: GraphQLOperation>(
-    for operation: T.Type,
+  static func deferredSelectionSetType(
     withLabel label: String,
-    atFieldPath fieldPath: [String]
+    atPath path: [JSONValue]
   ) -> (any SelectionSet.Type)? {
-    return T.deferredFragments?[DeferredFragmentIdentifier(label: label, fieldPath: fieldPath)]
-  }
+    let fieldNamesPath: [String] = path.compactMap({ $0 as? String })
 
-  static var hasDeferredFragments: Bool {
-    return !(deferredFragments?.isEmpty ?? true)
+    return deferredFragments?[DeferredFragmentIdentifier(label: label, path: fieldNamesPath)]
   }
 
   static var definition: OperationDefinition? {
@@ -111,35 +108,21 @@ public extension GraphQLOperation {
   static func ==(lhs: Self, rhs: Self) -> Bool {
     lhs.__variables?._jsonEncodableValue?._jsonValue == rhs.__variables?._jsonEncodableValue?._jsonValue
   }
-}
-
-// MARK: Instance Extensions
-
-public extension GraphQLOperation {
-  var __variables: Variables? {
-    return nil
-  }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine(__variables?._jsonEncodableValue?._jsonValue)
   }
 }
 
-// MARK: - GraphQLQuery
-
 public protocol GraphQLQuery: GraphQLOperation {}
 public extension GraphQLQuery {
   @inlinable static var operationType: GraphQLOperationType { return .query }
 }
 
-// MARK: - GraphQLMutation
-
 public protocol GraphQLMutation: GraphQLOperation {}
 public extension GraphQLMutation {
   @inlinable static var operationType: GraphQLOperationType { return .mutation }
 }
-
-// MARK: - GraphQLSubscription
 
 public protocol GraphQLSubscription: GraphQLOperation {}
 public extension GraphQLSubscription {

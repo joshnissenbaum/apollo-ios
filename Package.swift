@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:5.7
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -30,35 +30,23 @@ let package = Package(
       name: "Apollo",
       dependencies: [
         "ApolloAPI"
-      ],
-      resources: [
-        .copy("Resources/PrivacyInfo.xcprivacy")
       ]
     ),
     .target(
       name: "ApolloAPI",
-      dependencies: [],
-      resources: [
-        .copy("Resources/PrivacyInfo.xcprivacy")
-      ]
+      dependencies: []
     ),
     .target(
       name: "ApolloSQLite",
       dependencies: [
         "Apollo",
         .product(name: "SQLite", package: "SQLite.swift"),
-      ],
-      resources: [
-        .copy("Resources/PrivacyInfo.xcprivacy")
       ]
     ),
     .target(
       name: "ApolloWebSocket",
       dependencies: [
         "Apollo"
-      ],
-      resources: [
-        .copy("Resources/PrivacyInfo.xcprivacy")
       ]
     ),
     .target(
@@ -75,8 +63,7 @@ let package = Package(
           verb: "apollo-cli-install",
           description: "Installs the Apollo iOS Command line interface."),
         permissions: [
-          .writeToPackageDirectory(reason: "Downloads and unzips the CLI executable into your project directory."),
-          .allowNetworkConnections(scope: .all(ports: []), reason: "Downloads the Apollo iOS CLI executable from the GitHub Release.")
+          .writeToPackageDirectory(reason: "Creates a symbolic link to the CLI executable in your project directory."),
         ]),
       dependencies: [],
       path: "Plugins/InstallCLI"

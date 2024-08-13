@@ -3,7 +3,8 @@ import Foundation
 import ApolloAPI
 #endif
 
-enum ResultNormalizerFactory {
+struct ResultNormalizerFactory {
+  private init() {}
 
   static func selectionSetDataNormalizer() -> SelectionSetDataResultNormalizer {
     SelectionSetDataResultNormalizer()

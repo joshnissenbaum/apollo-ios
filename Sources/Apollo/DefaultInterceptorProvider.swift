@@ -45,11 +45,11 @@ open class DefaultInterceptorProvider: InterceptorProvider {
   }
 
   private func jsonParsingInterceptor<Operation: GraphQLOperation>(for operation: Operation) -> any ApolloInterceptor {
-    if Operation.hasDeferredFragments {
-      return IncrementalJSONResponseParsingInterceptor()
+    if (Operation.deferredFragments?.isEmpty ?? true) {
+      return JSONResponseParsingInterceptor()
 
     } else {
-      return JSONResponseParsingInterceptor()
+      return IncrementalJSONResponseParsingInterceptor()
     }
   }
 

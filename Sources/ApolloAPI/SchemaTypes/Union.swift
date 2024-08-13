@@ -4,7 +4,7 @@
 ///
 /// # See Also
 /// [GraphQLSpec - Unions](https://spec.graphql.org/draft/#sec-Unions)
-public struct Union: Hashable, Sendable {
+public struct Union: Hashable {
   /// The name of the ``Union`` in the GraphQL schema.
   public let name: String
 

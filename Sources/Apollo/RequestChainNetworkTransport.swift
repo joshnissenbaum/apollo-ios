@@ -103,13 +103,13 @@ open class RequestChainNetworkTransport: NetworkTransport {
     if Operation.operationType == .subscription {
       request.addHeader(
         name: "Accept",
-        value: "multipart/mixed;\(MultipartResponseSubscriptionParser.protocolSpec),application/json"
+        value: "multipart/mixed;boundary=\"graphql\";\(MultipartResponseSubscriptionParser.protocolSpec),application/json"
       )
 
     } else {
       request.addHeader(
         name: "Accept",
-        value: "multipart/mixed;\(MultipartResponseDeferParser.protocolSpec),application/json"
+        value: "multipart/mixed;boundary=\"graphql\";\(MultipartResponseDeferParser.protocolSpec),application/json"
       )
     }
 
@@ -177,7 +177,6 @@ extension RequestChainNetworkTransport: UploadingNetworkTransport {
                   additionalHeaders: self.additionalHeaders,
                   files: files,
                   manualBoundary: manualBoundary,
-                  context: context,
                   requestBodyCreator: self.requestBodyCreator)
   }
   

@@ -9,7 +9,6 @@ struct MultipartResponseSubscriptionParser: MultipartResponseSpecificationParser
     case cannotParseChunkData
     case irrecoverableError(message: String?)
     case cannotParsePayloadData
-    case cannotParseErrorData
 
     public var errorDescription: String? {
       switch self {
@@ -22,8 +21,6 @@ struct MultipartResponseSubscriptionParser: MultipartResponseSpecificationParser
         return "An irrecoverable error occured: \(message ?? "unknown")."
       case .cannotParsePayloadData:
         return "The payload data could not be parsed."
-      case .cannotParseErrorData:
-        return "The error data could not be parsed."
       }
     }
   }
@@ -46,7 +43,7 @@ struct MultipartResponseSubscriptionParser: MultipartResponseSpecificationParser
         return .heartbeat
       }
 
-      if dataLine.lowercased().starts(with: contentTypeHeader.description) {
+      if dataLine.starts(with: contentTypeHeader.description) {
         let contentType = (dataLine
           .components(separatedBy: ":").last ?? dataLine
         ).trimmingCharacters(in: .whitespaces)
@@ -80,33 +77,29 @@ struct MultipartResponseSubscriptionParser: MultipartResponseSpecificationParser
         }
 
       case let .json(object):
-        if let errors = object.errors, !(errors is NSNull) {
-          guard
-            let errors = errors as? [JSONObject],
-            let message = errors.first?["message"] as? String
-          else {
-            return .failure(ParsingError.cannotParseErrorData)
-          }
+        if let errors = object.errors {
+          let message = errors.first?["message"] as? String
 
           return .failure(ParsingError.irrecoverableError(message: message))
         }
 
-        if let payload = object.payload, !(payload is NSNull) {
-          guard
-            let payload = payload as? JSONObject,
-            let data: Data = try? JSONSerializationFormat.serialize(value: payload)
-          else {
-            return .failure(ParsingError.cannotParsePayloadData)
-          }
-
-          return .success(data)
+        guard let payload = object.payload else {
+          return .failure(ParsingError.cannotParsePayloadData)
         }
 
-        // 'errors' is optional because valid payloads don't have transport errors.
-        // `errors` can be null because it's taken to be the same as optional.
-        // `payload` is optional because the heartbeat message does not contain a payload field.
-        // `payload` can be null such as in the case of a transport error or future use (TBD).
-        return .success(nil)
+        if payload is NSNull {
+          // `payload` can be null such as in the case of a transport error
+          break
+        }
+
+        guard
+          let payload = payload as? JSONObject,
+          let data: Data = try? JSONSerializationFormat.serialize(value: payload)
+        else {
+          return .failure(ParsingError.cannotParsePayloadData)
+        }
+
+        return .success(data)
 
       case .unknown:
         return .failure(ParsingError.cannotParseChunkData)
@@ -118,8 +111,8 @@ struct MultipartResponseSubscriptionParser: MultipartResponseSpecificationParser
 }
 
 fileprivate extension JSONObject {
-  var errors: JSONValue? {
-    self["errors"]
+  var errors: [JSONObject]? {
+    self["errors"] as? [JSONObject]
   }
 
   var payload: JSONValue? {
